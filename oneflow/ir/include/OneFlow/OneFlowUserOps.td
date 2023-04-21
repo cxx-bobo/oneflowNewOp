@@ -6482,11 +6482,15 @@ def OneFlow_MySPMMOp : OneFlow_BaseOp<"my_spmm", [NoSideEffect, AttrSizedOperand
     OneFlow_Tensor:$x,
     OneFlow_Tensor:$y,
     OneFlow_Tensor:$w,
-    OneFlow_Tensor:$A
-    //一个可选项p：set function（sum,mean,max,min,LSTM）
+    OneFlow_Tensor:$csr_row,
+    OneFlow_Tensor:$csr_col,
+    OneFlow_Tensor:$csr_data
   );
   let output = (outs
     OneFlow_Tensor:$z
+  );
+  let attrs = (ins
+    DefaultValuedAttr<StrAttr, "\"sum\"">:$set_function
   );
   let trait_attrs = (ins
     I32ElementsAttr:$operand_segment_sizes
@@ -6502,7 +6506,9 @@ def OneFlow_MySDDMMOp : OneFlow_BaseOp<"my_sddmm", [NoSideEffect, AttrSizedOpera
     OneFlow_Tensor:$x,
     OneFlow_Tensor:$y,
     OneFlow_Tensor:$w,
-    OneFlow_Tensor:$A
+    OneFlow_Tensor:$csr_row,
+    OneFlow_Tensor:$csr_col,
+    OneFlow_Tensor:$csr_data
   );
   let output = (outs
     OneFlow_Tensor:$m

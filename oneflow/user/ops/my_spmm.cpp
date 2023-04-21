@@ -20,36 +20,36 @@ namespace oneflow {
 
 // 验证输入张量形状，推导输出张量形状
 /* static */ Maybe<void> MySPMMOp::InferLogicalTensorDesc(user_op::InferContext* ctx) {
-  /*输入tensor
-    x: 属于R(|V| x d1)，dense matrix
-    y: 属于R(|V| x d2)，dense matrix
-    w: 属于R(|V| x d3)，dense matrix
-    A: sparse matrix 
+  /*
+  -输入tensor
+    x：∈R(|V| x d1)，dense matrix
+    y：∈R(|V| x d2)，dense matrix
+    w：∈R(|ε| x d3)，dense matrix
+    A(sparse matrix): 分解成3个tensor 即csr_row，csr_col，csr_data 
     */
   const user_op::TensorDesc& x = ctx->InputTensorDesc("x", 0);  
   const user_op::TensorDesc& y = ctx->InputTensorDesc("y", 0);
   const user_op::TensorDesc& w = ctx->InputTensorDesc("w", 0);  
-  const user_op::TensorDesc& A = ctx->InputTensorDesc("A", 0);
+  const user_op::TensorDesc& csr_row = ctx->InputTensorDesc("csr_row", 0);
+  const user_op::TensorDesc& csr_col = ctx->InputTensorDesc("csr_col", 0);
+  const user_op::TensorDesc& csr_data = ctx->InputTensorDesc("csr_data", 0);
   
-  //w, x, y 都是二维
+  //形状检查
   CHECK_GE_OR_RETURN(x.shape().NumAxes(), 2);
-  CHECK_GE_OR_RETURN(w.shape().NumAxes(), 2);
   CHECK_GE_OR_RETURN(y.shape().NumAxes(), 2);
+  CHECK_GE_OR_RETURN(w.shape().NumAxes(), 2);
+  int64_t num_edge = w.shape().At(1);  
+  CHECK_GE_OR_RETURN(csr_col.shape().At(0), num_edge);
+  CHECK_GE_OR_RETURN(csr_data.shape().At(0), num_edge);
+  int64_t num_node = x.shape().At(1);  
+  CHECK_GE_OR_RETURN(y.shape().At(1), num_node);
+  CHECK_GE_OR_RETURN(csr_row.shape().At(0), num_node);
 
-  //A是csr_matrix
-  // int v_num = A.col_indices().size(0);
-  // Tensor e = A.crow_indices();
-  // int e_num=e[csr.crow_indices().size(0)-1];
-
-//   int64_t k = x.shape().At(1);  
-//   //矩阵X的列数需等于向量b的行数
-//   CHECK_EQ_OR_RETURN(k, b.shape().At(0)) << "Dim K should be equal to vector b's dim0. ";
-  
-  /*输出tensor
-    z: 属于R(|V| x d4)，dense matrix
+  /*
+  -输出tensor
+    z：∈R(|V| x d4)，dense matrix
     */
-  Shape z_shape = x.shape();
-  ctx->SetOutputShape("z", 0, z_shape);
+  ctx->SetOutputShape("z", 0, Shape({num_node}));
   return Maybe<void>::Ok();
 }
 
@@ -60,22 +60,31 @@ namespace oneflow {
 // Split, Broadcast, 定义分布式策略
 /* static */ Maybe<void> MySPMMOp::GetSbp(user_op::SbpContext* ctx) {
   ctx->NewBuilder()
+      .Split(user_op::OpArg("x", 0), 0)
+      .Broadcast(user_op::OpArg("y", 0))
       .Broadcast(user_op::OpArg("w", 0))
-      .Split(user_op::OpArg("x", 0), 1)
-      .Broadcast(user_op::OpArg("b", 0))
-      .Split(user_op::OpArg("y", 0), 1)
+      .Split(user_op::OpArg("z", 0), 0)
+      .Broadcast(user_op::OpArg("csr_row", 0))
+      .Broadcast(user_op::OpArg("csr_col", 0))
+      .Broadcast(user_op::OpArg("csr_data", 0))
       .Build();
   return Maybe<void>::Ok();
 }
 
-//判断X，W输入数据类型是否一致，根据输入的类型推导输出的类型
+//判断X，W输入 数据类型 是否一致，根据输入的数据类型推导输出的数据类型
 /* static */ Maybe<void> MySPMMOp::InferDataType(user_op::InferContext* ctx) {
-  DataType dtype = ctx->InputDType("w", 0);
-  CHECK_EQ_OR_RETURN(ctx->InputDType("x", 0), dtype)
-      << "Matrix W datatype should be equal to Matrix X. ";
-  CHECK_EQ_OR_RETURN(ctx->InputDType("b", 0), dtype)
-      << "Matrix W datatype should be equal to vector b. ";
-  ctx->SetOutputDType("y", 0, dtype);
+  DataType dtype = ctx->InputDType("x", 0);
+  CHECK_EQ_OR_RETURN(ctx->InputDType("y", 0), dtype)
+      << "Tensor Y datatype should be equal to Tensor X. ";
+  CHECK_EQ_OR_RETURN(ctx->InputDType("w", 0), dtype)
+      << "Tensor W datatype should be equal to Tensor X. ";
+  CHECK_EQ_OR_RETURN(ctx->InputDType("csr_row", 0), dtype)
+      << "Tensor csr_row datatype should be equal to Tensor X. ";
+  CHECK_EQ_OR_RETURN(ctx->InputDType("csr_col", 0), dtype)
+      << "Tensor csr_col datatype should be equal to Tensor X. ";
+  CHECK_EQ_OR_RETURN(ctx->InputDType("csr_data", 0), dtype)
+      << "Tensor csr_data datatype should be equal to Tensor X. ";
+  ctx->SetOutputDType("z", 0, dtype);
   return Maybe<void>::Ok();
 }
 
