@@ -15,58 +15,51 @@ limitations under the License.
 """
 
 import unittest
-# from collections import OrderedDict
 
 import numpy as np
 from oneflow.test_utils.automated_test_util import *
 
 import oneflow as flow
-# import oneflow.unittest
 import torch
 
 @flow.unittest.skip_unless_1n1d()
-class TestMyTiledAggregate(flow.unittest.TestCase):
-    # @autotest(check_graph=False,auto_backward=False)    #autotest的参数?
+class TestMyTiledAggregate(flow.unittest.TestCase):  
     def test_flow_tensor_matmul_with_random_int_data(test_case):
-        #initial data
-        # k = np.random.randint(1, 1024)
-        k = 16
-        print('k = {}'.format(k))
-        b = np.random.randint(0, 100, size=k)
-        print('b = {}'.format(b))
-        x = np.random.randint(0, 100, size=(k, k))
+        
+        # initial data
+        k = np.random.randint(1, 16)
+        N = 32 * k
+        print('N = {}'.format(N))
+        x = np.random.randint(0, 100, size=(N, N))
         print('x = {}'.format(x))
-        w = np.random.randint(0, 100, size=(k, k))
+        w = np.random.randint(0, 100, size=(N, N))
         print('w = {}'.format(w))
+        b = np.random.randint(0, 100, size=N)
+        print('b = {}'.format(b))
 
-        b_tmp = np.expand_dims(b,0).repeat(k,0)
-        print('b_tmp = {}'.format(b_tmp))
 
-        #tiled_aggregate in pytorch
-        torch_x = torch.from_numpy(x).to(dtype=torch.int)
-        torch_w = torch.from_numpy(w).to(dtype=torch.int)
-        torch_b = torch.from_numpy(b_tmp).to(dtype=torch.int)
-        torch_tmp_numpy = torch_x.matmul(torch_w)
+        #compute in pytorch
+        torch_x = torch.from_numpy(x).to(dtype=torch.float32).to('cuda')
+        torch_w = torch.from_numpy(w).to(dtype=torch.float32).to('cuda')
+        torch_tmp_b = np.expand_dims(b,0).repeat(N,0)
+        torch_tmp_b= torch.from_numpy(b).to(dtype=torch.float32).to('cuda')
+        print('torch_tmp_b = {}'.format(torch_tmp_b))
+        torch_tmp_numpy = torch.mm(torch_w,torch_x)
         print("torch_tmp_numpy = :",torch_tmp_numpy)
+        torch_y = torch.add(torch_tmp_numpy, torch_tmp_b).detach().cpu()
+        print("torch_output_numpy = :",torch_y)
         
 
-        torch_output_numpy = torch_tmp_numpy.add(torch_b)
-        print("torch_output_numpy = :",torch_output_numpy)
-        #tiled_aggregate in oneflow
+        #compute in oneflow
         flow_x = flow.tensor(x).to(dtype=flow.int,device="cuda")
         flow_w = flow.tensor(w).to(dtype=flow.int,device="cuda")
         flow_b = flow.tensor(b).to(dtype=flow.int,device="cuda")
+        flow_y = flow._C.my_tiled_aggregate(flow_x, flow_w, flow_b).detach().cpu().numpy()
+        print('flow_output_numpy = {}'.format(flow_y))
 
-        
-
-        flow_output_numpy = flow._C.my_tiled_aggregate(flow_x, flow_w, flow_b).detach().cpu().numpy()
-
-        print('flow_output_numpy = {}'.format(flow_output_numpy))
 
         #verify the result
-        test_case.assertTrue(
-            np.allclose(flow_output_numpy, torch_output_numpy.numpy(), 1e-05, 1e-05)
-        )
+        test_case.assertTrue( np.allclose(flow_y, torch_y.numpy(), 1e-05, 1e-05))
 
 if __name__ == "__main__":
     unittest.main()

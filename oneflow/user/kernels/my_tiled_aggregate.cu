@@ -94,8 +94,8 @@ class GpuMyTiledAggregateKernel final : public user_op::OpKernel {
     CHECK_EQ(y->shape_view().NumAxes(), 2) << "y Numdims should be equal to 2. ";
     CHECK_EQ(y->data_type(), data_type) << "y Datatype should be equal to input's. ";
 
-    //int N = x.shape().At(0);  //x，w，y矩阵的size都是N*N
-    int N = 1 << 10;
+    int N = x->shape_view().At(0);  //x，w，y矩阵的size都是N*N
+    //int N = 1 << 10;
     int threads_num = N*N;  //计算要启动的线程数量
     // Threads per CTA dimension
     int THREADS = 32;

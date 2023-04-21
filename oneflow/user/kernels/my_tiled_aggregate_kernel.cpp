@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 #include "oneflow/core/framework/framework.h"
+#include "oneflow/core/framework/op_generated.h"
 
 namespace oneflow {
 
@@ -53,8 +54,8 @@ class MyTiledAggregateKernel final : public user_op::OpKernel {
     // std::vector<int>* y_ptr = y->mut_dptr();
 
     //矩阵size是N*N
-    //const int N = x.shape().At(0);
-    const int N = 1 << 10;
+    const int N = x->shape_view().At(0);
+    //const int N = 1 << 10;
 
     // For every row...
     for (int i = 0; i < N; i++) {
