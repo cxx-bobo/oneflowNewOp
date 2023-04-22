@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 
-N = 64   #GPU kernel：N=32*k（k=1,2,3...）
+N = 8   #GPU kernel：N=32*k（k=1,2,3...）
 # N = np.random.randint(0,100)    #CPU kernel：N=1,2,3...
 # print('N = ', N)
 w = np.random.randint(0,100,size=(N,N))
@@ -15,9 +15,9 @@ print('b = {}'.format(b))
 
 
 # compute in oneflow（GPU运行）
-x_tensor = flow.Tensor(x).to(dtype=flow.float32,device="cuda")
-w_tensor = flow.Tensor(w).to(dtype=flow.float32,device="cuda")
-b_tensor = flow.Tensor(b).to(dtype=flow.float32,device="cuda")
+x_tensor = flow.Tensor(x).to(dtype=flow.int,device="cuda")
+w_tensor = flow.Tensor(w).to(dtype=flow.int,device="cuda")
+b_tensor = flow.Tensor(b).to(dtype=flow.int,device="cuda")
 flow_y = flow._C.my_tiled_aggregate(x_tensor,w_tensor,b_tensor).detach().cpu()
 
 # #compute in oneflow（cpu运行）

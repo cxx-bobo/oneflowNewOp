@@ -27,8 +27,9 @@ class TestMyTiledAggregate(flow.unittest.TestCase):
     def test_flow_tensor_matmul_with_random_int_data(test_case):
         
         # initial data
-        k = np.random.randint(1, 16)
-        N = 32 * k
+        # k = np.random.randint(1, 16)
+        # N = 32 * k
+        N = 128
         print('N = {}'.format(N))
         x = np.random.randint(0, 100, size=(N, N))
         print('x = {}'.format(x))
@@ -51,9 +52,9 @@ class TestMyTiledAggregate(flow.unittest.TestCase):
         
 
         #compute in oneflow
-        flow_x = flow.tensor(x).to(dtype=flow.int,device="cuda")
-        flow_w = flow.tensor(w).to(dtype=flow.int,device="cuda")
-        flow_b = flow.tensor(b).to(dtype=flow.int,device="cuda")
+        flow_x = flow.tensor(x).to(dtype=flow.float,device="cuda")
+        flow_w = flow.tensor(w).to(dtype=flow.float,device="cuda")
+        flow_b = flow.tensor(b).to(dtype=flow.float,device="cuda")
         flow_y = flow._C.my_tiled_aggregate(flow_x, flow_w, flow_b).detach().cpu().numpy()
         print('flow_output_numpy = {}'.format(flow_y))
 

@@ -98,9 +98,9 @@ class GpuMyTiledAggregateKernel final : public user_op::OpKernel {
     //int N = 1 << 10;
     int threads_num = N*N;  //计算要启动的线程数量
     // Threads per CTA dimension
-    int THREADS = 32;
-    // Blocks per grid dimension (assumes THREADS divides N evenly)
-    int BLOCKS = N / THREADS;
+    int THREADS = 128;
+    // Blocks per grid dimension 
+    int BLOCKS = (N+THREADS-1) / THREADS;
     // Use dim3 structs for block  and grid dimensions
     dim3 threads(THREADS, THREADS);
     dim3 blocks(BLOCKS, BLOCKS);
