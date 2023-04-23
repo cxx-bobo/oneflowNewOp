@@ -27,9 +27,7 @@ class TestMyTiledAggregate(flow.unittest.TestCase):
     def test_flow_tensor_matmul_with_random_int_data(test_case):
         
         # initial data
-        # k = np.random.randint(1, 16)
-        # N = 32 * k
-        N = 128
+        N = np.random.randint(1, 300)
         print('N = {}'.format(N))
         x = np.random.randint(0, 100, size=(N, N))
         print('x = {}'.format(x))

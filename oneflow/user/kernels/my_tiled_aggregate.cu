@@ -45,26 +45,31 @@ __global__ void TiledAggregateGpu(
   // Sweep tile across matrix
   for (int i = 0; i < N; i += blockDim.x) {
     // Load in elements for this tile
-    tile_W[threadIdx.y * blockDim.x + threadIdx.x] = matrix_W[row * N + i + threadIdx.x];
-    tile_H[threadIdx.y * blockDim.x + threadIdx.x] = matrix_H[i * N + threadIdx.y * N + col];
-
-    // Wait for both tiles to be loaded in before doing computation
+    int index_W = row * N + i + threadIdx.x;
+    if(index_W < N*N){
+      tile_W[threadIdx.y * blockDim.x + threadIdx.x] = matrix_W[index_W];
+    }else{
+      tile_W[threadIdx.y * blockDim.x + threadIdx.x] = 0;
+    }
+    int index_H = i * N + threadIdx.y * N + col;
+    if(index_H < N*N){
+      tile_H[threadIdx.y * blockDim.x + threadIdx.x] = matrix_H[index_H];
+    }else{
+      tile_H[threadIdx.y * blockDim.x + threadIdx.x] = 0;
+    }
     __syncthreads();
 
     // Do matrix multiplication on the small matrix
     for (int j = 0; j < blockDim.x; j++) {
-      tmp +=
-          tile_W[threadIdx.y * blockDim.x + j] * tile_H[j * blockDim.x + threadIdx.x];
+      tmp += tile_W[threadIdx.y * blockDim.x + j] * tile_H[j * blockDim.x + threadIdx.x];
     }
-    
-    // Wait for all threads to finish using current tiles before loading in new
-    // ones
     __syncthreads();
   }
 
   // Write back results
-  tmp += vector_b[col];
-  c[row * N + col] = tmp;
+  if(row < N && col < N){
+    c[row * N + col] = vector_b[col] + tmp;
+  }
 }
 
 //}  // namespace
@@ -98,7 +103,7 @@ class GpuMyTiledAggregateKernel final : public user_op::OpKernel {
     //int N = 1 << 10;
     int threads_num = N*N;  //计算要启动的线程数量
     // Threads per CTA dimension
-    int THREADS = 128;
+    int THREADS = 32;
     // Blocks per grid dimension 
     int BLOCKS = (N+THREADS-1) / THREADS;
     // Use dim3 structs for block  and grid dimensions
