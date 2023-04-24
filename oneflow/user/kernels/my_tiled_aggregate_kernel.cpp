@@ -48,14 +48,9 @@ class MyTiledAggregateKernel final : public user_op::OpKernel {
     const T* w_ptr = w->dptr<T>();
     const T* b_ptr = b->dptr<T>();
     T* y_ptr = y->mut_dptr<T>();
-    // std::vector<int>* x_ptr = x->dptr();
-    // std::vector<int>* w_ptr = w->dptr();
-    // std::vector<int>* b_ptr = b->dptr();
-    // std::vector<int>* y_ptr = y->mut_dptr();
 
     //矩阵size是N*N
     const int N = x->shape_view().At(0);
-    //const int N = 1 << 10;
 
     // For every row...
     for (int i = 0; i < N; i++) {

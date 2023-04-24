@@ -28,7 +28,7 @@ class TestMyTiledAggregate(flow.unittest.TestCase):
         
         # initial data
         # N = np.random.randint(1, 300)
-        N=3
+        N=1024
         print('N = {}'.format(N))
         x = np.random.randint(0, 100, size=(N, N))
         print('x = {}'.format(x))
@@ -50,11 +50,20 @@ class TestMyTiledAggregate(flow.unittest.TestCase):
         print("torch_output_numpy = :",torch_y)
         
 
-        #compute in oneflow
-        flow_x = flow.tensor(x).to(dtype=flow.int,device="cuda")
-        flow_w = flow.tensor(w).to(dtype=flow.int,device="cuda")
-        flow_b = flow.tensor(b).to(dtype=flow.int,device="cuda")
-        flow_y = flow._C.my_tiled_aggregate(flow_x, flow_w, flow_b).detach().cpu().numpy()
+        # #compute in oneflow(gpu)
+        # flow_x = flow.tensor(x).to(dtype=flow.float,device="cuda")
+        # flow_w = flow.tensor(w).to(dtype=flow.float,device="cuda")
+        # flow_b = flow.tensor(b).to(dtype=flow.float,device="cuda")
+        # flow_y = flow._C.my_tiled_aggregate(flow_x, flow_w, flow_b).detach().cpu().numpy()
+        # print('flow_output_numpy = {}'.format(flow_y))
+
+        #compute in oneflow(cpu)
+        #cpu kernel下 若数据类型为int，则必须指定为int64，否则很有可能出现数据溢出的情况
+        #但gpu kernel下 如数据类型为int，则不用指定为int64，为什么？
+        flow_x = flow.tensor(x).to(dtype=flow.int64,device="cpu")
+        flow_w = flow.tensor(w).to(dtype=flow.int64,device="cpu")
+        flow_b = flow.tensor(b).to(dtype=flow.int64,device="cpu")
+        flow_y = flow._C.my_tiled_aggregate(flow_x, flow_w, flow_b).numpy()
         print('flow_output_numpy = {}'.format(flow_y))
 
 
