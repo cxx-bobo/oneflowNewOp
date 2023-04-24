@@ -100,22 +100,21 @@ class GpuMyTiledAggregateKernel final : public user_op::OpKernel {
     CHECK_EQ(y->data_type(), data_type) << "y Datatype should be equal to input's. ";
 
     int N = x->shape_view().At(0);  //x，w，y矩阵的size都是N*N
-    //int N = 1 << 10;
-    int threads_num = N*N;  //计算要启动的线程数量
     // Threads per CTA dimension
-    int THREADS = 32;
+    int threads_per_block = 32;
     // Blocks per grid dimension 
-    int BLOCKS = (N+THREADS-1) / THREADS;
+    int blocks_num = ( N + threads_per_block -1 ) / threads_per_block;
     // Use dim3 structs for block  and grid dimensions
-    dim3 threads(THREADS, THREADS);
-    dim3 blocks(BLOCKS, BLOCKS);
-    // obtain shared memory size for each thread block(tile_A+tile_B,所以乘2)
-    int shared_memory_size = 2*THREADS*THREADS*sizeof(int);
-    
-    // RUN_CUDA_KERNEL((TiledAggregateGpu<T1,T2>), ctx->stream(), threads_num, 
-    //                 w->dptr<T1>(), x->dptr<T1>(), b->dptr<T2>(), THREADS, y->mut_dptr<T1>(), N);
+    dim3 threads(threads_per_block, threads_per_block);
+    dim3 blocks(blocks_num, blocks_num);
+    /*obtain shared memory size for each thread block(tile_A+tile_B,所以乘2)
+      if threads_per_block=32, then shared_memory_size = 2*32*32*4 = 8192 bytes = 8 KB
+      if threads_per_block=128, then shared_memory_size = 2*128*128*4 = 131072 bytes = 128 KB
+      而GPU02上的shared memory size 是 49152 bytes = 48 KB*/
+    int shared_memory_size = 2*threads_per_block*threads_per_block*sizeof(int);
+    //launch kernel
     TiledAggregateGpu<T><<<blocks, threads, shared_memory_size>>>
-                    (w->dptr<T>(), x->dptr<T>(), b->dptr<T>(), THREADS, y->mut_dptr<T>(), N);
+                    (w->dptr<T>(), x->dptr<T>(), b->dptr<T>(), threads_per_block, y->mut_dptr<T>(), N);
   }
   bool AlwaysComputeWhenAllOutputsEmpty() const override { return false; }
 };
