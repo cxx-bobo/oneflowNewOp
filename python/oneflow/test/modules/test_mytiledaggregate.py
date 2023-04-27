@@ -27,15 +27,14 @@ class TestMyTiledAggregate(flow.unittest.TestCase):
     def test_flow_tensor_matmul_with_random_int_data(test_case):
         
         # initial data
-        # N = np.random.randint(1, 300)
-        N=1024
+        N = np.random.randint(1, 300)
         print('N = {}'.format(N))
         x = np.random.randint(0, 100, size=(N, N))
-        print('x = {}'.format(x))
+        #print('x = {}'.format(x))
         w = np.random.randint(0, 100, size=(N, N))
-        print('w = {}'.format(w))
+        #print('w = {}'.format(w))
         b = np.random.randint(0, 100, size=N)
-        print('b = {}'.format(b))
+        #print('b = {}'.format(b))
 
 
         #compute in pytorch
@@ -43,32 +42,41 @@ class TestMyTiledAggregate(flow.unittest.TestCase):
         torch_w = torch.from_numpy(w).to(dtype=torch.float).to('cuda')
         torch_tmp_b = np.expand_dims(b,0).repeat(N,0)
         torch_tmp_b= torch.from_numpy(b).to(dtype=torch.float).to('cuda')
-        print('torch_tmp_b = {}'.format(torch_tmp_b))
+        #print('torch_tmp_b = {}'.format(torch_tmp_b))
         torch_tmp_numpy = torch.mm(torch_w,torch_x)
-        print("torch_tmp_numpy = :",torch_tmp_numpy)
+        #print("torch_tmp_numpy = :",torch_tmp_numpy)
         torch_y = torch.add(torch_tmp_numpy, torch_tmp_b).detach().cpu()
-        print("torch_output_numpy = :",torch_y)
+        #print("torch_output_numpy = :",torch_y)
         
 
-        # #compute in oneflow(gpu)
-        # flow_x = flow.tensor(x).to(dtype=flow.float,device="cuda")
-        # flow_w = flow.tensor(w).to(dtype=flow.float,device="cuda")
-        # flow_b = flow.tensor(b).to(dtype=flow.float,device="cuda")
-        # flow_y = flow._C.my_tiled_aggregate(flow_x, flow_w, flow_b).detach().cpu().numpy()
-        # print('flow_output_numpy = {}'.format(flow_y))
+        #compute in oneflow(gpu)
+        print("Compute in oneflow(GPU)...")
+        flow_x_gpu = flow.tensor(x).to(dtype=flow.int,device="cuda")
+        flow_w_gpu = flow.tensor(w).to(dtype=flow.int,device="cuda")
+        flow_b_gpu = flow.tensor(b).to(dtype=flow.int,device="cuda")
+        flow_y_gpu = flow._C.my_tiled_aggregate(flow_x_gpu, flow_w_gpu, flow_b_gpu).detach().cpu().numpy()
+        #print('flow_y_gpu = {}'.format(flow_y_gpu))
+        #verify the result
+        print("Compare the results of onflow(GPU) and torch...")
+        test_case.assertTrue( np.allclose(flow_y_gpu, torch_y.numpy(), 1e-05, 1e-05))
+        print("Correct!")
 
         #compute in oneflow(cpu)
         #cpu kernel下 若数据类型为int，则必须指定为int64，否则很有可能出现数据溢出的情况
         #但gpu kernel下 如数据类型为int，则不用指定为int64，为什么？
-        flow_x = flow.tensor(x).to(dtype=flow.int64,device="cpu")
-        flow_w = flow.tensor(w).to(dtype=flow.int64,device="cpu")
-        flow_b = flow.tensor(b).to(dtype=flow.int64,device="cpu")
-        flow_y = flow._C.my_tiled_aggregate(flow_x, flow_w, flow_b).numpy()
-        print('flow_output_numpy = {}'.format(flow_y))
-
-
+        print("Compute in oneflow(CPU)...")
+        flow_x_cpu = flow.tensor(x).to(dtype=flow.int64,device="cpu")
+        flow_w_cpu = flow.tensor(w).to(dtype=flow.int64,device="cpu")
+        flow_b_cpu = flow.tensor(b).to(dtype=flow.int64,device="cpu")
+        flow_y_cpu = flow._C.my_tiled_aggregate(flow_x_cpu, flow_w_cpu, flow_b_cpu).numpy()
+        #print('flow_y_cpu = {}'.format(flow_y_cpu))
         #verify the result
-        test_case.assertTrue( np.allclose(flow_y, torch_y.numpy(), 1e-05, 1e-05))
+        print("Compare the results of onflow(CPU) and torch...")
+        test_case.assertTrue( np.allclose(flow_y_cpu, torch_y.numpy(), 1e-05, 1e-05))
+        print("Correct!")
+
+
+        
 
 if __name__ == "__main__":
     unittest.main()
