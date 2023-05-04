@@ -6459,23 +6459,6 @@ def OneFlow__ncclLogicalSendRecvOp : OneFlow_BaseOp<"_nccl_logical_send_recv", [
 
 #ifdef GET_ONEFLOW_NORMALIZATION_OP_DEFINITIONS
 
-def OneFlow_MyTiledAggregateOp : OneFlow_BaseOp<"my_tiled_aggregate", [NoSideEffect, AttrSizedOperandSegments, DeclareOpInterfaceMethods<UserOpCompatibleInterface>]> {
-  let input = (ins
-    OneFlow_Tensor:$x,
-    OneFlow_Tensor:$w,
-    Optional<OneFlow_Tensor>:$b
-  );
-  let output = (outs
-    OneFlow_Tensor:$y
-  );
-  let trait_attrs = (ins
-    I32ElementsAttr:$operand_segment_sizes
-  );
-  let has_logical_tensor_desc_infer_fn = 1;
-  let has_physical_tensor_desc_infer_fn = 1;
-  let has_get_sbp_fn = 1;
-  let has_data_type_infer_fn = 1;
-}
 
 def OneFlow_MySPMMOp : OneFlow_BaseOp<"my_spmm", [NoSideEffect, AttrSizedOperandSegments, DeclareOpInterfaceMethods<UserOpCompatibleInterface>]> {
   let input = (ins
