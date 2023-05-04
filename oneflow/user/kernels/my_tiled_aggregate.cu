@@ -100,21 +100,25 @@ class GpuMyTiledAggregateKernel final : public user_op::OpKernel {
     CHECK_EQ(y->data_type(), data_type) << "y Datatype should be equal to input's. ";
 
     int N = x->shape_view().At(0);  //x，w，y矩阵的size都是N*N
-    // Threads per CTA dimension
-    int threads_per_block = 32;
-    // Blocks per grid dimension 
-    int blocks_num = ( N + threads_per_block -1 ) / threads_per_block;
-    // Use dim3 structs for block  and grid dimensions
-    dim3 threads(threads_per_block, threads_per_block);
-    dim3 blocks(blocks_num, blocks_num);
+
     /*obtain shared memory size for each thread block(tile_A+tile_B,所以乘2)
       if threads_per_block=32, then shared_memory_size = 2*32*32*4 = 8192 bytes = 8 KB
       if threads_per_block=128, then shared_memory_size = 2*128*128*4 = 131072 bytes = 128 KB
       而GPU02上的shared memory size 是 49152 bytes = 48 KB*/
-    int shared_memory_size = 2*threads_per_block*threads_per_block*sizeof(int);
+    int threads_per_CTAdim = 32;
+    int blocks_per_GRIDdim = ( N + threads_per_CTAdim -1 ) / threads_per_CTAdim;
+    /* Use dim3 structs for block and grid dimensions
+       注意BLOCK size（三个维度的threads乘积）须是32（warp size）的整数倍，
+       BLOCK size不应超过GPU的maximum block size（一般为1024，这取决于GPU的型号和计算能力），
+       决定GPU的maximum block size可能的限制：每个块可用的共享内存量、每个线程的寄存器数量或每个多处理器的最大驻留块数量...
+    */
+    dim3 BLOCK(threads_per_CTAdim, threads_per_CTAdim);
+    dim3 GRID(blocks_per_GRIDdim, blocks_per_GRIDdim);
+    int shared_memory_size = 2*threads_per_CTAdim*threads_per_CTAdim*sizeof(int);
+
     //launch kernel
-    TiledAggregateGpu<T><<<blocks, threads, shared_memory_size>>>
-                    (w->dptr<T>(), x->dptr<T>(), b->dptr<T>(), threads_per_block, y->mut_dptr<T>(), N);
+    TiledAggregateGpu<T><<<GRID, BLOCK, shared_memory_size>>>
+                    (w->dptr<T>(), x->dptr<T>(), b->dptr<T>(), threads_per_CTAdim, y->mut_dptr<T>(), N);
   }
   bool AlwaysComputeWhenAllOutputsEmpty() const override { return false; }
 };
